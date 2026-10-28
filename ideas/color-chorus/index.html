@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Color Chorus 有声有色</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5' cy='6' r='4' fill='%23e0453a'/%3E%3Ccircle cx='11' cy='6' r='4' fill='%23f2c230'/%3E%3Ccircle cx='8' cy='11' r='4' fill='%233a78d8'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --ink: #2b2733; --paper: #fffaf0; --muted: #6b6474; --gold: #ffd34d;
+    --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0c0a11; color: var(--ink); font-family: var(--font); user-select: none; }
+  canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hidden { display: none !important; }
+  small { display: block; font-size: 0.8em; color: var(--muted); font-weight: 400; }
+  kbd { font: 700 12px var(--font); background: #fff; border: 1.5px solid var(--ink); border-bottom-width: 3px; border-radius: 5px; padding: 0 5px; }
+  #links { position: fixed; right: 14px; bottom: 8px; font-size: 12px; display: flex; gap: 12px; }
+  #links a { color: rgba(255, 240, 220, 0.55); text-decoration: none; border-bottom: 1px dashed rgba(255, 240, 220, 0.4); }
+  #links a:hover { color: #fff; }
+
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(12, 10, 17, 0.55); z-index: 10; cursor: pointer; }
+  .card { background: var(--paper); border: 2.5px solid var(--ink); border-radius: 20px; box-shadow: 6px 7px 0 rgba(0, 0, 0, 0.35); padding: 26px 34px 24px; max-width: 640px; width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: auto; cursor: default; }
+  h1 { margin: 0 0 2px; font-size: 40px; letter-spacing: 0.04em; }
+  h1 .dots { display: inline-flex; gap: 5px; vertical-align: middle; margin-right: 10px; }
+  h1 .dots i { width: 16px; height: 16px; border-radius: 50%; display: block; border: 2px solid var(--ink); }
+  h1 small { display: inline; font-size: 20px; margin-left: 8px; font-style: italic; }
+  .pitch { font-size: 15.5px; line-height: 1.6; margin: 10px 0 14px; }
+  .controls { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; font-size: 14px; margin: 0 0 18px; align-items: baseline; }
+  .controls dt { font-weight: 700; white-space: nowrap; }
+  .controls dd { margin: 0; }
+  .controls dd small { display: inline; margin-left: 4px; }
+  .row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .btn { font: 800 20px var(--font); padding: 10px 34px; cursor: pointer; color: var(--ink); background: var(--gold); border: 2.5px solid var(--ink); border-radius: 14px; box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.3); }
+  .btn:hover { background: #ffc61a; }
+  .note { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="links">
+  <a href="../../index.html">← 原型列表 Hub</a>
+  <a href="https://github.com/fyh828/protos/blob/main/ideas/color-chorus/DESIGN.md" target="_blank" rel="noopener">DESIGN.md</a>
+</div>
+
+<div id="start" class="overlay">
+  <div class="card">
+    <h1><span class="dots"><i style="background:#e0453a"></i><i style="background:#f2c230"></i><i style="background:#3a78d8"></i></span>有声有色<small>Color Chorus</small></h1>
+    <p class="pitch">一支小小的合唱团在舞台上巡演。角色唱歌时会发出声波，被声波碰到的道具会染上它的颜色，几种颜色叠在一起会混色。让每个道具<b>同时</b>变成它真正的颜色，这一幕就完成了。<small>A tiny choir tours a stage. Songs dye every prop they touch, overlapping songs mix colors, and an act is won when every prop shows its true color at the same time.</small></p>
+    <dl class="controls">
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>移动<small>walk</small></dd>
+      <dt><kbd>空格</kbd></dt><dd>跳，落地时会唱歌<small>jump; landing makes the singer sing</small></dd>
+      <dt><kbd>↓</kbd></dt><dd>从平台上跳下<small>drop through a ledge</small></dd>
+      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></dt><dd>切换角色，切换过去的角色马上唱歌<small>switch singer; it sings at once</small></dd>
+      <dt><kbd>R</kbd> · <kbd>M</kbd></dt><dd>重来这一幕 · 静音<small>restart the act · mute</small></dd>
+      <dt>混色</dt><dd>红+黄=橙 · 黄+蓝=绿 · 红+蓝=紫 · 三色=黑<small>mixing on one prop</small></dd>
+      <dt>褪色</dt><dd>颜色 10 秒后褪去，所以要让大家一起唱<small>colors fade after 10 s, so sing together</small></dd>
+    </dl>
+    <div class="row"><button id="startBtn" class="btn">开始 Start</button><span class="note">或按任意键 · or press any key</span></div>
+  </div>
+</div>
+
+<script src="./levels.js"></script>
+<script src="./art.js"></script>
+<script src="./game.js"></script>
+</body>
+</html>
