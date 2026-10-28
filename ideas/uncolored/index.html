@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uncolored 未上色</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23e0453a'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --ink: #3b3631; --paper: #f6f2e8; --card: rgba(255, 253, 248, 0.94); --muted: #7a7468; --gold: #b8860b;
+    --font: "Segoe UI", "Helvetica Neue", "KaiTi", "STKaiti", "Kaiti SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --hand: "KaiTi", "STKaiti", "Kaiti SC", "Segoe Print", "Microsoft YaHei", serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font-family: var(--font); user-select: none; }
+  canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .hidden { display: none !important; }
+  small { display: block; font-size: 0.78em; color: var(--muted); font-family: var(--font); font-weight: 400; }
+  kbd { font: 600 11px var(--font); background: #fff; border: 1px solid var(--ink); border-radius: 4px; padding: 0 4px; }
+  .sketch { background: var(--card); border: 2px solid var(--ink); border-radius: 16px 11px 17px 10px / 11px 16px 10px 17px; box-shadow: 3px 4px 0 rgba(59, 54, 49, 0.14); }
+  .ico { width: 22px; height: 22px; flex: none; }
+
+  /* HUD (kept clear of the 36px edge-scroll band) */
+  #hud { position: fixed; top: 46px; left: 46px; display: flex; gap: 12px; align-items: stretch; }
+  #toolsBox { display: flex; gap: 10px; padding: 9px 12px; align-items: center; }
+  .slot { position: relative; width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--ink); background: var(--c); cursor: pointer; transition: transform .15s, box-shadow .15s; padding: 0; }
+  .slot:hover { transform: translateY(-2px); }
+  .slot.active { transform: translateY(-4px) scale(1.08); box-shadow: 0 0 0 4px #ffd34d; }
+  .slot.locked { background: repeating-linear-gradient(45deg, #ece8df 0 4px, #f8f6f1 4px 8px); border-style: dashed; color: #a59d8e; cursor: help; }
+  .slot.locked::after { content: "?"; font: 700 20px var(--font); }
+  .slot kbd { position: absolute; right: -7px; bottom: -7px; }
+  .slot[data-tool="eraser"] { border-radius: 10px; background: linear-gradient(135deg, #7fa7d9 0 38%, #f3a7b5 38% 100%); }
+  .stat { display: flex; align-items: center; gap: 7px; padding: 6px 14px; font-weight: 700; font-size: 18px; }
+  .stat small { display: inline; margin-left: 2px; }
+  .bump { animation: bump .45s; }
+  @keyframes bump { 30% { transform: scale(1.25) rotate(-4deg); } 70% { transform: scale(0.95); } }
+  #links { position: fixed; top: 48px; right: 50px; font-size: 13px; display: flex; gap: 12px; }
+  #links a { color: var(--muted); text-decoration: none; border-bottom: 1px dashed var(--muted); }
+  #links a:hover { color: var(--ink); }
+  #help { position: fixed; bottom: 46px; left: 50%; transform: translateX(-50%); font-size: 13px; color: var(--muted); background: rgba(255, 253, 248, 0.8); padding: 5px 14px; border-radius: 10px; white-space: nowrap; pointer-events: none; }
+  #toasts { position: fixed; top: 120px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; z-index: 5; }
+  .toast { padding: 9px 18px; font: 600 16px var(--font); max-width: min(560px, 90vw); text-align: center; animation: pop .3s; transition: opacity .5s, transform .5s;
+    background: var(--card); border: 2px solid var(--ink); border-radius: 14px 10px 16px 9px; box-shadow: 3px 4px 0 rgba(59, 54, 49, .14); }
+  .toast small { font-size: 12px; margin-top: 2px; }
+  .toast.out { opacity: 0; transform: translateY(-8px); }
+  @keyframes pop { from { transform: scale(.8); opacity: 0; } }
+  #unlockLayer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .unlock { position: absolute; left: 0; top: 0; pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 10px 18px; font: 700 17px var(--hand); color: var(--ink); cursor: pointer; background: #fffdf8; border: 2px solid var(--ink); border-radius: 14px 10px 16px 9px; box-shadow: 3px 4px 0 rgba(59, 54, 49, .18); text-align: left; }
+  .unlock .ico { color: var(--gold); width: 28px; height: 28px; }
+  .unlock:hover { background: #fff6d8; }
+  .unlock.poor { opacity: .75; }
+  .unlock.poor .ico { color: #a59d8e; }
+
+  /* overlays */
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(246, 242, 232, 0.86); z-index: 10; }
+  .overlay .card { padding: 28px 36px; max-width: 620px; width: calc(100vw - 40px); max-height: calc(100vh - 40px); overflow: auto; }
+  h1 { font: 700 44px var(--hand); margin: 0 0 4px; }
+  h1 small { display: inline; font: italic 22px Georgia, serif; margin-left: 8px; }
+  .pitch { font: 17px var(--hand); line-height: 1.5; margin: 8px 0 14px; }
+  .controls { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; margin: 0 0 18px; }
+  .controls dt { font-weight: 700; white-space: nowrap; }
+  .controls dd { margin: 0; }
+  .controls dd small { display: inline; margin-left: 4px; }
+  .btn { font: 700 20px var(--hand); padding: 10px 30px; cursor: pointer; color: var(--ink); background: #ffe58a; border: 2px solid var(--ink); border-radius: 14px 10px 16px 9px; box-shadow: 3px 4px 0 rgba(59, 54, 49, .2); }
+  .btn:hover { background: #ffd34d; }
+  .row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+  #panel { background: rgba(50, 44, 36, 0.35); }
+  #panel .card { width: calc(100vw - 72px); height: calc(100vh - 72px); max-width: none; max-height: none; padding: 0; display: flex; flex-direction: column; overflow: hidden; background: rgba(255, 253, 248, 0.98); }
+  #panel header { display: flex; align-items: center; gap: 22px; padding: 14px 20px 10px; border-bottom: 1.5px dashed #cbbfa8; }
+  #panel .speech { font: 700 20px var(--hand); flex: 1; }
+  #panel .meta { display: flex; flex-direction: column; font: 600 15px var(--hand); gap: 2px; text-align: right; }
+  #pReward { color: var(--gold); }
+  .meter { position: relative; width: 190px; height: 26px; border: 2px solid var(--ink); border-radius: 13px; overflow: hidden; background: #fff; }
+  #pBar { position: absolute; inset: 0 auto 0 0; width: 0; background: #f0c44a; transition: width .15s; }
+  #pBar.full { background: #6cc070; }
+  #pPct { position: relative; display: block; text-align: center; font: 700 13px/22px var(--font); }
+  #pClose { font: 700 20px var(--font); width: 40px; height: 40px; cursor: pointer; background: #fff; border: 2px solid var(--ink); border-radius: 50%; }
+  #pClose:hover { background: #ffe1e1; }
+  #pc { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; }
+  #panel footer { padding: 6px 20px 10px; font-size: 13px; color: var(--muted); text-align: center; }
+  #panel footer small { display: inline; margin-left: 6px; }
+
+  #win .card { text-align: center; }
+  #win svg { width: 150px; height: 150px; }
+  #winStats { font-size: 15px; margin: 10px 0 18px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div id="toolsBox" class="sketch">
+    <button class="slot locked" data-tool="red" style="--c:#e0453a" title="红色颜料 Red paint (1)"><kbd>1</kbd></button>
+    <button class="slot locked" data-tool="yellow" style="--c:#f2c230" title="黄色颜料 Yellow paint (2)"><kbd>2</kbd></button>
+    <button class="slot locked" data-tool="blue" style="--c:#3a78d8" title="蓝色颜料 Blue paint (3)"><kbd>3</kbd></button>
+    <button class="slot" data-tool="eraser" title="橡皮擦 Eraser (E)"><kbd>E</kbd></button>
+  </div>
+  <div class="stat sketch" title="钥匙：用来解锁被雾遮住的区域 Keys unlock fogged regions">
+    <svg viewBox="0 0 32 32" class="ico" style="color:#b8860b"><circle cx="10" cy="16" r="6.5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M16.5 16h12M24 16v5M28 16v4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+    <span id="keysN">0</span>
+  </div>
+  <div id="bagStat" class="stat sketch" title="你的背包 Your backpack">
+    <svg viewBox="0 0 32 32" class="ico"><path d="M9 11c0-5 3-7 7-7s7 2 7 7" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="5" y="10" width="22" height="18" rx="5" fill="#f7e2b8" stroke="currentColor" stroke-width="2.2"/><path d="M9 18h14" stroke="currentColor" stroke-width="2"/></svg>
+    <span id="bagN">0</span>
+  </div>
+  <div class="stat sketch" title="小家伙的第几个背包 Creature's bag round">
+    <svg viewBox="0 0 32 32" class="ico"><path d="M12 6l4 4 4-4M10 12c-5 4-6 14 0 16h12c6-2 5-12 0-16z" fill="#fffaf0" stroke="#7a5a3a" stroke-width="2.2" stroke-linejoin="round"/></svg>
+    <span id="roundN">1/4</span>
+  </div>
+</div>
+
+<div id="links">
+  <a href="../../index.html">← 原型列表 Hub</a>
+  <a href="https://github.com/fyh828/protos/blob/main/ideas/uncolored/DESIGN.md" target="_blank" rel="noopener">DESIGN.md</a>
+</div>
+<div id="help">鼠标靠近边缘 / 拖动：移动视角 · 左键：拾取 / 涂色 · 右键单击：放下画笔 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 颜料 <kbd>E</kbd> 橡皮 · <kbd>M</kbd> 静音</div>
+<div id="unlockLayer"></div>
+<div id="toasts"></div>
+
+<div id="start" class="overlay">
+  <div class="card sketch">
+    <h1>未上色 <small>Uncolored</small></h1>
+    <p class="pitch">整个世界只是一张没上色的草稿。把每个涂鸦涂成它真正的颜色，它才能被拿走；再把收集到的东西拼进小家伙的背包，换钥匙打开更多地图。<small>The world is an uncolored sketch. Paint each doodle its true color to pick it up, then fill the creature's bag with your finds to earn keys.</small></p>
+    <dl class="controls">
+      <dt>鼠标靠近屏幕边缘</dt><dd>移动视角，越靠边越快（也可用方向键 / WASD）<small>Look around, faster near the edge (or arrows / WASD)</small></dd>
+      <dt>拖动地图</dt><dd>空手时按住左键拖动；任何时候都可按住右键 / 中键拖动<small>Drag with the left button (no tool), or right / middle button any time</small></dd>
+      <dt>左键点击</dt><dd>拾取颜料、收集发光的物品、和小家伙说话<small>Pick up paint, collect glowing things, talk</small></dd>
+      <dt>1 2 3 / E</dt><dd>拿起红 / 黄 / 蓝颜料或橡皮（也可点左上角）<small>Take red / yellow / blue paint or the eraser</small></dd>
+      <dt>按住左键</dt><dd>涂色 / 擦除，松开抬笔<small>Hold to paint or erase</small></dd>
+      <dt>右键单击 / Esc</dt><dd>放下画笔，恢复光标（收集前要放下）<small>Put the tool away (needed to collect)</small></dd>
+      <dt>混色</dt><dd>红+黄=橙 · 黄+蓝=绿 · 红+蓝=紫 · 三色=黑 · 不涂=白<small>Mixing on one object</small></dd>
+    </dl>
+    <div class="row"><button id="startBtn" class="btn">开始 Start</button><span style="color:var(--muted);font-size:14px">或按任意键 · or press any key</span></div>
+  </div>
+</div>
+
+<div id="panel" class="overlay hidden">
+  <div class="card sketch">
+    <header>
+      <div class="speech">收集地图上的东西，填满我的背包，获得奖励<small>Collect things from the map, fill my bag, get a reward.</small></div>
+      <div class="meta"><span id="pRound"></span><span id="pReward"></span></div>
+      <div class="meter"><div id="pBar"></div><span id="pPct">覆盖 0%</span></div>
+      <button id="pClose" title="关闭 Close (Esc)">✕</button>
+    </header>
+    <canvas id="pc"></canvas>
+    <footer>把下方背包里的物品拖到虚线轮廓上，盖住 98% 就完成 · 滚轮 / R 旋转 · 右键放回 · Esc 关闭（物品退回）<small>Drag items over the outline until 98% is covered · Wheel / R rotates · Right-click returns · Esc closes</small></footer>
+  </div>
+</div>
+
+<div id="win" class="overlay hidden">
+  <div class="card sketch">
+    <svg viewBox="0 0 100 100"><path d="M30 18h40v18c0 14-9 24-20 24S30 50 30 36z" fill="#f2c230" stroke="#3b3631" stroke-width="3" stroke-linejoin="round"/><path d="M30 24H18c0 12 6 18 14 18M70 24h12c0 12-6 18-14 18" fill="none" stroke="#3b3631" stroke-width="3"/><path d="M44 60h12v12H44zM34 72h32v10H34z" fill="#f2c230" stroke="#3b3631" stroke-width="3" stroke-linejoin="round"/><path d="M40 26c-2 8 0 16 5 21" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+    <h1>你赢了！<small>You win!</small></h1>
+    <p class="pitch">小家伙的巨型麻袋装满了，奖杯归你。<small>The giant sack is full and the trophy is yours.</small></p>
+    <div id="winStats"></div>
+    <button id="againBtn" class="btn">再玩一次 Play again</button>
+  </div>
+</div>
+
+<script src="./art.js"></script>
+<script src="./level.js"></script>
+<script src="./panel.js"></script>
+<script src="./game.js"></script>
+</body>
+</html>
